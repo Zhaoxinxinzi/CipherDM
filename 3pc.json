@@ -1,0 +1,38 @@
+{
+    "id": "outsourcing.3pc",
+    "nodes": {
+        "node:0": "127.0.0.1:61954",
+        "node:1": "127.0.0.1:61955",
+        "node:2": "127.0.0.1:61956"
+    },
+    "devices": {
+        "SPU": {
+            "kind": "SPU",
+            "config": {
+                "node_ids": [
+                    "node:0",
+                    "node:1",
+                    "node:2"
+                ],
+                "spu_internal_addrs": [
+                    "127.0.0.1:61964",
+                    "127.0.0.1:61965",
+                    "127.0.0.1:61966"
+                ],
+                "runtime_config": {
+                    "protocol": "ABY3",
+                    "field": "FM64",
+                    "enable_pphlo_profile": true,
+                    "enable_hal_profile": true,
+                    "fxp_exp_mode": 1
+                }
+            }
+        },
+        "INPUT": {
+            "kind": "PYU",
+            "config": {
+                "node_id": "node:0"
+            }
+        }
+    }
+}

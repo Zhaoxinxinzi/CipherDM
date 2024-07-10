@@ -1,0 +1,1 @@
+export PYTHONPATH=./ && python scripts/flax_train_tiny_mnist.py
