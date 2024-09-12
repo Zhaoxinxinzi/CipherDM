@@ -39,10 +39,10 @@ def measure_runtime(func):
     callable: A wrapper function that will measure the runtime of 'func'.
     """
     def wrapper(*args, **kwargs):
-        start_time = time.time()  # 获取开始时间
-        result = func(*args, **kwargs)  # 执行函数
-        end_time = time.time()  # 获取结束时间
-        runtime = end_time - start_time  # 计算运行时间
+        start_time = time.time()  
+        result = func(*args, **kwargs)  
+        end_time = time.time()  
+        runtime = end_time - start_time  
         print(f"Function '{func.__name__}' took {runtime:.4f} seconds to complete.")
         return result
     return wrapper
@@ -51,7 +51,6 @@ def measure_runtime(func):
 def normalize_to_0_255(array):
     min_val = array.min()
     max_val = array.max()
-    # 归一化到 [0, 1]
     normalized_array = (array - min_val) *255/ (max_val - min_val)
     return normalized_array.astype(jnp.uint8)
 
@@ -72,26 +71,20 @@ def sample_image(params, y=None):
 import jax.numpy as jnp
 
 def make_grid(images, nrow):
-    # 检查图像列表是否为空
     if len(images) == 0:
         raise ValueError("No images to display in the grid.")
-    # 单个图像的形状
     single_image_shape = images[0].shape
-    # 确定图像是二维还是三维
-    if len(single_image_shape) == 2:  # 二维图像
+    if len(single_image_shape) == 2:  
         height, width = single_image_shape
         num_channels = 1
-    elif len(single_image_shape) == 3:  # 三维图像
+    elif len(single_image_shape) == 3:  
         height, width, num_channels = single_image_shape
     else:
         raise ValueError("Images should be 2D or 3D.")
-    # 计算网格的尺寸
     nrows = (len(images) + nrow - 1) // nrow
     grid_height = nrows * single_image_shape[0]
     grid_width = nrow * single_image_shape[1]
-    # 创建一个大的数组来容纳所有图像
     grid = jnp.zeros((grid_height, grid_width, num_channels), dtype=images[0].dtype)
-    # 填充网格
     for index, image in enumerate(images):
         row = index // nrow
         col = index % nrow
@@ -123,7 +116,7 @@ def sample_sequence(params, y=None):
 
 def main(args: argparse.Namespace):
     # key args
-    model_path = "path_to_checkpoint"
+    model_path = "./checkpoints/ddpm-20000.msgpack"
     save_dir = "./eval_out"
      # Load the model checkpoint
 
@@ -156,7 +149,7 @@ def main(args: argparse.Namespace):
     params = restored_state.params
     y = jnp.ones(num_each_label, dtype=jnp.int32)*1
     image = sample_image(params,y)
-    imageio.imwrite(f"{save_dir}/0.png", image)
+    # imageio.imwrite(f"{save_dir}/1.png", image)
 
 
 
