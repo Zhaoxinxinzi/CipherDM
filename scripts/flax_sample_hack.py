@@ -56,10 +56,10 @@ def measure_runtime(func):
     callable: A wrapper function that will measure the runtime of 'func'.
     """
     def wrapper(*args, **kwargs):
-        start_time = time.time()  # 获取开始时间
-        result = func(*args, **kwargs)  # 执行函数
-        end_time = time.time()  # 获取结束时间
-        runtime = end_time - start_time  # 计算运行时间
+        start_time = time.time()  
+        result = func(*args, **kwargs)  
+        end_time = time.time()  
+        runtime = end_time - start_time  
         print(f"Function '{func.__name__}' took {runtime:.4f} seconds to complete.")
         return result
     return wrapper
@@ -209,20 +209,20 @@ def hack_mish_context(msg: str, enabled: bool = True):
 @measure_runtime
 def run_inference_on_cpu(params,y,save_dir):
     output = sample_image(params,y)
-    imageio.imwrite(f"{save_dir}/raw.png", output)
+    # imageio.imwrite(f"{save_dir}/raw.png", output)
 
 
 @measure_runtime
 def run_inference_on_spu(params,y,save_dir):
     output = ppd.device("SPU")(sample_image, copts=copts)(params, y)
     output = ppd.get(output)
-    imageio.imwrite(f"{save_dir}/safe.png", output)
+    # imageio.imwrite(f"{save_dir}/safe.png", output)
     
 @measure_runtime
 def run_inference_on_hackspu(params,y,save_dir):
     output = ppd.device("SPU")(sample_image, copts=copts)(params, y)
     output = ppd.get(output)
-    imageio.imwrite(f"{save_dir}/hacksafe.png", output)
+    # imageio.imwrite(f"{save_dir}/hacksafe.png", output)
 
 def get_sample_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser()
@@ -235,7 +235,6 @@ def get_sample_arg_parser() -> argparse.ArgumentParser:
 def normalize_to_0_1(array):
     min_val = array.min()
     max_val = array.max()
-    # 归一化到 [0, 1]
     normalized_array = (array - min_val) / (max_val - min_val)
     return normalized_array
 
@@ -252,7 +251,7 @@ def sample_image(params, y=None):
 
 def main(args: argparse.Namespace):
     # key args
-    model_path = "path_to_checkpoint"
+    model_path = "./checkpoints/ddpm-20000.msgpack"
     save_dir = "./eval_out"
      # Load the model checkpoint
 
