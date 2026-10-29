@@ -95,13 +95,18 @@ class FlaxGaussianDiffusion(nn.Module):
         # 初始化随机噪声
         rng, x_rng = jax.random.split(rng_key)
         x = jax.random.normal(x_rng, (batch_size, *self.img_size, self.img_channels))
-        for t in reversed(range(self.num_timesteps)):
+        def step(module, carry, t):
+            x, rng = carry
             rng, step_rng = jax.random.split(rng)
             t_batch = jnp.full((batch_size,), t, dtype=jnp.int32)
-            x = self.remove_noise(x, t_batch, y, use_ema)
-            if t > 0:
-                sigma_t = extract(self.sigma, t_batch, x.shape)
-                x += sigma_t * jax.random.normal(rng, x.shape)
+            x = module.remove_noise(x, t_batch, y, use_ema)
+            sigma_t = extract(module.sigma, t_batch, x.shape)
+            x += jnp.where(t > 0, sigma_t, 0) * jax.random.normal(step_rng, x.shape)
+            return (x, rng), None
+        # Lift the scan so Flax owns its parameter scopes across iterations.
+        (x, _), _ = nn.scan(step, variable_broadcast='params',
+                            split_rngs={'params': False})(
+                                self, (x, rng), jnp.arange(self.num_timesteps-1, -1, -1))
         # print("xsample",x.transpose(0,3,1,2))
         return x
 
@@ -125,9 +130,13 @@ class FlaxGaussianDiffusion(nn.Module):
 
     def sample_ddim(self, batch_size, y=None, use_ema= False, rng_key=None, ddim_timesteps =50, ddim_discr_method = "uniform", clip_denoised=True):
         ddim_eta=0.0 #eta=1, ddpm; eta=0, ddim
+        if y is not None and batch_size != len(y):
+            raise ValueError("sample batch size different from length of given y")
+        if not 1 <= ddim_timesteps <= self.num_timesteps:
+            raise ValueError("ddim_timesteps must be between 1 and num_timesteps")
         if ddim_discr_method == 'uniform':
-            c = self.num_timesteps // ddim_timesteps
-            ddim_timestep_seq = jnp.asarray(jnp.arange(0, self.num_timesteps, c))
+            ddim_timestep_seq = jnp.asarray(np.linspace(
+                0, self.num_timesteps - 1, ddim_timesteps, dtype=np.int32))
         elif ddim_discr_method == 'quad':
             ddim_timestep_seq = (
                 jnp.square(jnp.linspace(0, jnp.sqrt(self.num_timesteps * .8), ddim_timesteps))
@@ -135,10 +144,9 @@ class FlaxGaussianDiffusion(nn.Module):
         else:
             raise NotImplementedError(f'There is no ddim discretization method called "{ddim_discr_method}"')
         
-        # add one to get the final alpha values right (the ones from first scale to data during sampling)
-        ddim_timestep_seq = ddim_timestep_seq + 1
         # previous sequence
-        ddim_timestep_prev_seq = jnp.append(jnp.array([0]), ddim_timestep_seq[:-1])
+        # -1 denotes clean data, whose cumulative alpha is exactly 1.
+        ddim_timestep_prev_seq = jnp.append(jnp.array([-1]), ddim_timestep_seq[:-1])
         # start from pure noise (for each example in the batch)
         rng, x_rng = jax.random.split(rng_key)
         x = jax.random.normal(x_rng, (batch_size, *self.img_size, self.img_channels))
@@ -148,7 +156,11 @@ class FlaxGaussianDiffusion(nn.Module):
             prev_t_batch = jnp.full((batch_size,), ddim_timestep_prev_seq[t], dtype=jnp.int32)
             # 1. get current and previous alpha_cumprod
             alpha_cumprod_t = extract(self.alphas_cumprod, t_batch, x.shape)
-            alpha_cumprod_t_prev = extract(self.alphas_cumprod, prev_t_batch, x.shape)
+            alpha_cumprod_t_prev = jnp.where(
+                (prev_t_batch < 0).reshape((batch_size,) + (1,) * (x.ndim - 1)),
+                1.0,
+                extract(self.alphas_cumprod, jnp.maximum(prev_t_batch, 0), x.shape),
+            )
             # 2. predict noise using model
             # pred_noise = self.model(x, t_batch, y)
             if use_ema:
@@ -176,11 +188,11 @@ class FlaxGaussianDiffusion(nn.Module):
         return sqrt_alphas_cumprod * x + sqrt_one_minus_alphas_cumprod * noise
     
 
-    def get_losses(self, x, t, y, rng_key):
+    def get_losses(self, x, t, y, rng_key, deterministic=True):
         rng, rng_key = jax.random.split(rng_key)
         noise = jax.random.normal(rng, x.shape)
         perturbed_x = self.perturb_x(x, t, noise)
-        estimated_noise = self.model(perturbed_x, t, y)
+        estimated_noise = self.model(perturbed_x, t, y, deterministic=deterministic)
 
         if self.loss_type == "l1":
             loss = jnp.mean(jnp.abs(estimated_noise - noise))
@@ -190,13 +202,13 @@ class FlaxGaussianDiffusion(nn.Module):
 
         
 
-    def __call__(self,rng, x, y=None):
+    def __call__(self,rng, x, y=None, deterministic=True):
         b, h, w, c = x.shape
         if h != self.img_size[0] or w != self.img_size[1]:
             raise ValueError("Image dimensions do not match diffusion parameters")
         rng, rng_key = jax.random.split(rng)
         t = random.randint(rng, (b,), 0, self.num_timesteps)
-        loss = self.get_losses(x, t, y, rng_key)
+        loss = self.get_losses(x, t, y, rng_key, deterministic=deterministic)
         # print("call_loss",loss)
         return loss
 
