@@ -53,6 +53,7 @@ def get_diffusion_from_args(args):
         img_channels=args.img_channels,
         base_channels=args.base_channels,
         channel_mults=args.channel_mults,
+        num_res_blocks=args.num_res_blocks,
         time_emb_dim=args.time_emb_dim,
         norm=args.norm,
         dropout=args.dropout,
@@ -117,7 +118,7 @@ def get_args(parser: argparse.ArgumentParser = None) -> argparse.Namespace:
         loss_type="l2",
         base_channels=4,
         channel_mults=(1, 2),
-        num_res_blocks=1,
+        num_res_blocks=2,  # The original Torch factory effectively uses 2.
         time_emb_dim=8,
         norm="gn",
         dropout=0.1,
