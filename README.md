@@ -8,11 +8,11 @@ docker build -t myubuntu:v1 --build-arg http_proxy=## --build-arg https_proxy=##
 docker run --rm --network=host myubuntu:v1
 ```
 
-# Flax retraining and diagnostics
+# Flax training and diagnostics
 
 Run commands from the repository root. The validated environment uses Python 3.10,
 JAX 0.4.18, Flax 0.7.0, Optax 0.1.4, NumPy, and Pillow. Install a GPU-compatible
-jaxlib and cuDNN matching that build. The retraining and audit scripts do not need
+jaxlib and cuDNN matching that build. The training and audit scripts do not need
 Torch, torchvision, or SPU.
 
 Activate the environment and verify that JAX detects the GPU:
@@ -38,9 +38,9 @@ files: `train-images-idx3-ubyte`, `train-labels-idx1-ubyte`,
 
 ```bash
 export MNIST_RAW=/path/to/MNIST/raw
-python -u scripts/flax_retrain.py \
+python -u scripts/flax_train.py \
   --mnist_raw "$MNIST_RAW" \
-  --log_dir runs/flax_retrain \
+  --log_dir checkpoints \
   --iterations 20000 --batch_size 128 \
   --learning_rate 0.0002 --dropout 0.1 --checkpoint_rate 1000
 ```
@@ -67,7 +67,7 @@ Audit a checkpoint:
 ```bash
 python scripts/audit_flax.py \
   --mnist_raw "$MNIST_RAW" \
-  --model_path runs/flax_retrain/step_0020000_ema.msgpack
+  --model_path checkpoints/step_0020000_ema.msgpack
 ```
 
 Add `--audit_train_steps 20` for an in-memory optimization probe. This uses a
@@ -78,7 +78,7 @@ Sample using the ordinary JAX entry point:
 
 ```bash
 python scripts/flax_sample.py \
-  --model_path runs/flax_retrain/step_0020000_ema.msgpack \
+  --model_path checkpoints/step_0020000_ema.msgpack \
   --save_dir model_eval
 ```
 
