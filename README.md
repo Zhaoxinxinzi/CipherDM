@@ -91,7 +91,3 @@ The ordinary sampler uses Pillow and does not require OpenCV or torchvision.
 SPU evaluation remains a
 separate entry point with its existing configuration requirements.
 
-See [FLAX_AUDIT.md](FLAX_AUDIT.md) for the original checkpoint investigation and
-the distinction between confirmed defects and unverified causes.
-See [TORCH_PARITY.md](TORCH_PARITY.md) for weight conversion and numerical
-comparisons with the original Torch source.
